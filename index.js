@@ -201,10 +201,10 @@ function session(options){
   }
 
   // generates the new session
-  store.generate = function(req){
-    req.sessionID = uid(24);
-    req.session = new Session(req);
-    req.session.cookie = new Cookie(cookie);
+  store.generate = function(req, res){
+    res.sessionID = req.sessionID = uid(24);
+    res.session = req.session = new Session(req);
+    res.session.cookie = req.session.cookie = new Cookie(cookie);
   };
 
   store.on('disconnect', function(){ storeReady = false; });
@@ -233,7 +233,7 @@ function session(options){
       , originalId;
 
     // expose store
-    req.sessionStore = store;
+    res.sessionStore = req.sessionStore = store;
 
     // grab the session cookie value and check the signature
     var rawCookie = req.cookies[key];
@@ -308,18 +308,13 @@ function session(options){
       });
     };
 
-    // generate the session
-    function generate() {
-      store.generate(req);
-    }
-
     // get the sessionID from the cookie
     req.sessionID = unsignedCookie;
 
     // generate a session if the browser doesn't send a sessionID
     if (!req.sessionID) {
       debug('no SID sent, generating session');
-      generate();
+      store.generate(req, res);
       next();
       return;
     }
@@ -331,7 +326,7 @@ function session(options){
       if (err) {
         debug('error %j', err);
         if ('ENOENT' == err.code) {
-          generate();
+          store.generate(req, res);
           next();
         } else {
           next(err);
@@ -339,7 +334,7 @@ function session(options){
       // no session
       } else if (!sess) {
         debug('no session found');
-        generate();
+        store.generate(req, res);
         next();
       // populate req.session
       } else {
